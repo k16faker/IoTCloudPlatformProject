@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ko">
+    <head>
+        <meta charset="utf-8">
+        <title>Smart Library Web</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi" crossorigin="anonymous">
+        <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+        <div id="main" class="border border-dark border-5 rounded-4 p-3 mb-2 bg-secondary text-white bg-opacity-75"">
+            <div id="head">
+                <h1>Smart Library Web Application</h1>
+            </div>
+            <div id="CheckArea" class="container px-4 text-center">
+                <button id="CheckButton" type="button" class="btn btn-dark">데이터 조회</button>
+                <div id="StatArea" class="row gx-5">
+                    <div id="Tem" class="col">
+                        <p id="temtext">온도</p>
+                        <p id="Temp">0</p>
+                    </div>
+                    <div id="Hum" class="col">
+                        <p id="humtext">습도</p>
+                        <p id="Humid">0</p>
+                    </div>
+                    <div id="Air" class="col">
+                        <p id="airtext">대기 질</p>
+                        <p id="Airraid">0</p>
+                    </div>
+                    <div id="Std" class="col">
+                        <p id="stdnumber">현재 인원 수</p>
+                        <p id="stds">0</p>
+                    </div>
+                </div>
+            </div>
+            <div id="InputArea">
+                <button id="FanButton" type="button" class="btn btn-dark">Fan ON</button>
+                <button id="FanButton2" type="button" class="btn btn-dark">Fan OFF</button>
+                <button id="WindowButton" type="button" class="btn btn-dark">Window Open</button>
+                <button id="WindowButton2" type="button" class="btn btn-dark">Window Close</button>
+            </div>
+        </div>
+        <script type="text/javascript" src="app.js"></script>
+    </body>
+</html>
