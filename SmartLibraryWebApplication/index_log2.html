@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Log</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi" crossorigin="anonymous">
+    <link rel="stylesheet" href="logstyle.css">
+</head>
+<body>
+    <div id="full" class = "border border-dark border-5 rounded-4 p-3 mb-2 bg-secondary text-white bg-opacity-75">
+        <div id="head" class="container px-4 text-center">
+            <h1 id="mainhead">대기 질 로그</h1>
+            <p>날짜는 yyyy-mm-dd 형식으로 적어주세요</p>
+            <input type="text" id="from" placeholder="from">
+            <input type="text" id="to" placeholder="to">
+            <button id="LogCheckButton" type="button" class="btn btn-dark">로그 확인하기</button>
+        </div>
+        <div id="content">
+            <div id="log">
+                <p id="logtext">로그</p>
+                <p id="logdata"></p>
+            </div>
+        </div>
+    </div>
+    <script type="text/javascript" src="log2.js"></script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+#full {
+    margin:auto;
+    height: 100vh;
+    width: 800px;
+    text-align: center;
+    padding-top: 50px;
+}
+
+#content {
+    margin-top: 30px;
+    text-align: center;
+}
+
+
+#mainhead {
+    text-align: center;
+}
