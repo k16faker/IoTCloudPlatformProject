@@ -1,11 +1,11 @@
 #head {
     border-bottom: 5px solid black;
-    font-family: Georgia, 'Times New Roman', Times, serif;
+    font-family: Helvetica, 'Times New Roman', Times, serif;
 }
 
 #main {
     margin: auto;
-    height: 500px;
+    height: 100vh;
     width: 800px;
     text-align: center;
     padding-top: 50px;
@@ -24,12 +24,16 @@
     margin-top: 30px;
 }
 
-#Tem, #Hum, #Air, #Std {
+#Tem, #Hum, #Air, #Std, #Fan {
     border: 2px solid black;
     border-radius: 10px;
     font-family: Georgia, 'Times New Roman', Times, serif;
 }
 
-#temtext, #humtext, #airtext, #stdnumber {
+#temtext, #humtext, #airtext, #stdnumber, #fanonoff {
     border-bottom: 2px solid black;
+}
+
+#warning {
+    font-family: Arial, Helvetica, sans-serif;
 }

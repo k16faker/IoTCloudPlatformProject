@@ -7,7 +7,7 @@
         <link rel="stylesheet" href="style.css">
     </head>
     <body>
-        <div id="main" class="border border-dark border-5 rounded-4 p-3 mb-2 bg-secondary text-white bg-opacity-75"> <!-- 전체 틀 -->
+        <div id="main" class="border border-dark border-5 rounded-4 p-3 mb-2 bg-secondary text-black bg-opacity-50"> <!-- 전체 틀 -->
             <div id="head"> <!--제목-->
                 <h1>Smart Library Web Application</h1>
             </div>
@@ -29,13 +29,20 @@
                     </div>
                     <div id="Std" class="col">
                         <p id="stdnumber">현재 인원 수</p>
-                        <p id="stds">0</p>
+                        <p id="stds">0</p><p>/</p><p id="max">0</p>
+                    </div>
+                    <div id="Fan" class="col">
+                        <p id="fanonoff">팬 상태</p>
+                        <p id="fans"></p>
                     </div>
                 </div>
             </div>
             <div id="InputArea"> <!--팬 on off 에리어-->
                 <button id="FanButton" type="button" class="btn btn-dark">Fan ON</button>
                 <button id="FanButton2" type="button" class="btn btn-dark">Fan OFF</button>
+            </div>
+            <div id="warning">
+                <p>대기질이 1000이상이면 팬을 동작시켜주세요</p>
             </div>
         </div>
         <script type="text/javascript" src="app.js"></script>

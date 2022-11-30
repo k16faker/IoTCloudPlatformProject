@@ -8,6 +8,8 @@ const windowclose = document.querySelector('#WindowButton2');
 const temp = document.querySelector('#Temp');
 const humi = document.querySelector('#Humid');
 const air = document.querySelector('#Airraid');
+const fans = document.querySelector('#fans');
+const max = document.querySelector('#max');
 
 //온습도 API
 const API_URL = 'https://eqbyoluqw4.execute-api.ap-northeast-2.amazonaws.com/prod/devices/finalexam';
@@ -25,12 +27,14 @@ const finddata = () => {
             document.getElementById('Humid').innerHTML = result.state.reported.humidity;
             document.getElementById('Airraid').innerHTML = result.state.reported.CO2;
             document.getElementById('stds').innerHTML = result.state.reported.R;
+            document.getElementById('fans').innerHTML = result.state.reported.FAN;
         })
         .catch((error) => {
             alert('error');
 
         });
 }
+
 
 //3초에 1회씩 자동 갱신되도록 하는 함수
 const find_find = () => {
@@ -45,20 +49,12 @@ const movelink = () => {
 
 //팬 켜기 함수
 const fan_on = () => {
-    fetch(API_URL, {
-        method: 'PUT',
+    fetch("https://eqbyoluqw4.execute-api.ap-northeast-2.amazonaws.com/prod/devices/finalexam", {
+        method: "PUT",
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify(
-            {
-                "tags" : [
-                    {
-                        "tagName" : "FAN",
-                        "tagValue" : "ON"
-                    }
-                ]
-        })
+        body:JSON.stringify({ tags : [ { tagName : "FAN", tagValue : "ON" } ] })
     })
         .then(response => response.json())
         .then(data => {
@@ -68,20 +64,12 @@ const fan_on = () => {
 
 //팬 끄는 함수
 const fan_off = () => {
-    fetch(API_URL, {
+    fetch("https://eqbyoluqw4.execute-api.ap-northeast-2.amazonaws.com/prod/devices/finalexam", {
         method: 'PUT',
         headers: {
             'Content-Type':'application/json'
         },
-        body: JSON.stringify(
-        {
-            "tags" : [
-                {
-                    "tagName" : "FAN",
-                    "tagValue" : "OFF"
-                }
-            ]
-        })
+        body:JSON.stringify({ tags : [ { tagName : "FAN", tagValue : "OFF" } ] })
     })
         .then(response => response.json())
         .then(data => {
@@ -94,3 +82,5 @@ check.addEventListener('click', find_find);
 log.addEventListener('click', movelink);
 fanon.addEventListener('click', fan_on);
 fanoff.addEventListener('click', fan_off);
+
+
