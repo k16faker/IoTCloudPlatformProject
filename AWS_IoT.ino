@@ -21,15 +21,14 @@
 */
 
 // Co2 -> A1
-// 팬 핀 -> 7
+// 팬 핀 -> 7 , 6
 // 온습도센서 -> 2
-// rfid -> SDA:
+// rfid -> D9 ~ D13
 
 #include <ArduinoBearSSL.h>
 #include <ArduinoECCX08.h>
 #include <ArduinoMqttClient.h>
 #include <WiFiNINA.h> // change to #include <WiFi101.h> for MKR1000
-#include <Servo.h>
 #include "arduino_secrets.h"
 
 // 온습도 센서를 쓰기 위한 핀 설정
@@ -48,17 +47,13 @@ MFRC522::MIFARE_Key key;
 // Init array that will store new NUID 
 byte nuidPICC[4];
 
-// 창문(서보모터)를 사용하기 위한 핀 설정
-// int motor_pin = 8; // 서보 모터를 동작하기 위해 8번 핀 사용
-// Servo servo; //오렌지에 디지털핀, 빨간색 5V, 갈색에 그라운드
-
-int fan_pin1 = 7; // 팬을 작동하기 위해 9번 핀 사용. 아날로그 핀이 아닐경우 다른 핀으로 변경해야함
+// 아두이노 호환 팬을 사용하기 위한 팬 핀 설정
+int fan_pin1 = 7;
 int fan_pin2 = 6;
-const char* fan_state = "OFF"; // 팬 작동을 제어하기 위해
+const char* fan_state = "OFF"; // 팬 작동을 제어하기 위한 변수 생성 (평상시에는 꺼져 있어야 하므로 기본값을 OFF로 선언)
 
-int RFID_count = 0;
+int RFID_count = 0; // 열람실의 현재 인원을 받기 위한 변수 생성
 #include <ArduinoJson.h>
-#include "Led.h"
 
 /////// Enter your sensitive data in arduino_secrets.h
 const char ssid[]        = SECRET_SSID;
@@ -76,11 +71,16 @@ void setup() {
   Serial.begin(115200);
   while (!Serial);
 
-  dht.begin();
+  dht.begin(); // 온습도 모듈
+  
+  // 팬 모듈
   pinMode(fan_pin1,OUTPUT);
   pinMode(fan_pin2,OUTPUT);
+  
+  // RFID 모듈
   SPI.begin(); // Init SPI bus
   rfid.PCD_Init(); // Init MFRC522
+  
   if (!ECCX08.begin()) {
     Serial.println("No ECCX08 present!");
     while (1);
@@ -123,9 +123,9 @@ void loop() {
   if (millis() - lastMillis > 5000) {
     lastMillis = millis();
     char payload[512];
-    RFID_start();
-    getDeviceStatus(payload);
-    sendMessage(payload);
+    RFID_start(); // RFID로 현재 열람실 인원수를 파악
+    getDeviceStatus(payload); // 아두이노를 통해서 열람실의 현재 공기 상태를 파악
+    sendMessage(payload); // 현재 상태를 Eclipse에 전송
   }
 }
 
@@ -134,6 +134,7 @@ unsigned long getTime() {
   return WiFi.getTime();
 }
 
+// WiFI 연결 함수
 void connectWiFi() {
   Serial.print("Attempting to connect to SSID: ");
   Serial.print(ssid);
@@ -150,6 +151,7 @@ void connectWiFi() {
   Serial.println();
 }
 
+// MQTT 연결 함수
 void connectMQTT() {
   Serial.print("Attempting to MQTT broker: ");
   Serial.print(broker);
@@ -165,17 +167,17 @@ void connectMQTT() {
   Serial.println("You're connected to the MQTT broker");
   Serial.println();
 
-  // subscribe to a topic
-  mqttClient.subscribe("$aws/things/finalexam/shadow/update/delta"); // 사물을 새로 만들었으니 MyMKRWiFi1010 -> finalexam으로 수정
+  // 사물 finalexam에 대한 주제 구독
+  mqttClient.subscribe("$aws/things/finalexam/shadow/update/delta"); 
 }
 
 void getDeviceStatus(char* payload) {  
   // Read temperature as Celsius (the default)
-  float t = dht.readTemperature();
-  float h = dht.readHumidity();
-  int c = CO2() ; // co2값을 반디 위한 변수
-  int r = RFID_count ; // RFID를 통해 인원수를 입력받음
-  const char* fan = (digitalRead(fan_pin1)==LOW)? "ON" : "OFF" ; // 팬이 돌아가는지 확인하기 위해
+  float t = dht.readTemperature(); // 현재 열람실 온도 측정
+  float h = dht.readHumidity(); // 현재 열람실 습도 측정
+  int c = CO2() ; // 현재 열람실 co2값 측정
+  int r = RFID_count ; // RFID를 통해 현재 열람실 인원수를 입력받음
+  const char* fan = (digitalRead(fan_pin1)==LOW)? "ON" : "OFF" ; // 팬의 현재 상태 파악 (제어를 하기 위해서도 필요)
   // make payload for the device update topic ($aws/things/MyMKRWiFi1010/shadow/update)
   // 온습도 , CO2 , RFID으로부터 값을 받고
   // 팬 제어
@@ -183,7 +185,7 @@ void getDeviceStatus(char* payload) {
 }
 
 void sendMessage(char* payload) {
-  char TOPIC_NAME[]= "$aws/things/finalexam/shadow/update"; // 여기부분도 사물 새로 만들었음으로 바꿔야 함
+  char TOPIC_NAME[]= "$aws/things/finalexam/shadow/update"; // 사물 finalexam에 대한 주제
   
   Serial.print("Publishing send message:");
   Serial.println(payload);
@@ -228,9 +230,8 @@ void onMessageReceived(int messageSize) {
   DynamicJsonDocument doc(1024);
   deserializeJson(doc, buffer);
   JsonObject root = doc.as<JsonObject>();
-  // 여기 코드부터 액츄에이터 상태를 받음
-  JsonObject state = root["state"];
-  const char* flag = state["FAN"];
+  JsonObject state = root["state"]; // 상태 부분을 state 변수에 받음
+  const char* flag = state["FAN"]; // 열람실 상태에서 팬의 상태 부분을 변수 flag에 저장
   // {
   //      "state": {
   //          "desired": {
@@ -243,21 +244,22 @@ void onMessageReceived(int messageSize) {
   
   char payload[512];
   Serial.println(flag);
-  if (strcmp(flag,"ON")==0) {
-    fan_play();
-    sprintf(payload,"{\"state\":{\"reported\":{\"FAN\":\"%s\"}}}","ON");
+  if (strcmp(flag,"ON")==0) { // 팬 상태가 'ON' 이라면
+    fan_play(); // 팬을 동작시킴
+    sprintf(payload,"{\"state\":{\"reported\":{\"FAN\":\"%s\"}}}","ON"); // 팬이 현재 작동중인 상태라고 보냄
     sendMessage(payload);
     
   } 
-  else if (strcmp(flag,"OFF")==0) {
-    fan_stop();
-    sprintf(payload,"{\"state\":{\"reported\":{\"FAN\":\"%s\"}}}","OFF");
+  else if (strcmp(flag,"OFF")==0) { // 팬 상태가 'OFF'라면
+    fan_stop(); // 팬을 멈추고
+    sprintf(payload,"{\"state\":{\"reported\":{\"FAN\":\"%s\"}}}","OFF"); // 팬이 현재 정지 상태라고 보냄
     sendMessage(payload);
   }
  
 }
 
-int CO2(){ //공기 중에 이산화탄소 농도 측정하는 함수. 디지털 핀은 안써도 됨
+//공기 중에 이산화탄소 농도 측정하는 함수
+int CO2(){
   int value = 0;
   for (int i=0;i<10;i++){
     value += analogRead(A1); // co2 값 받기 위해서 A0를 사용
@@ -266,11 +268,6 @@ int CO2(){ //공기 중에 이산화탄소 농도 측정하는 함수. 디지털
   value = value / 10 ;
   return value; 
 }
-
-// 창문
-// void motor_play(int power){ //서보 모터 동작
-//     servo.write(power);
-// }
 
 // 팬 관련 함수
 void fan_play(){ // 팬을 동작 시키는 함수
@@ -282,6 +279,7 @@ void fan_stop(){ // 팬을 멈추는 함수
   digitalWrite(fan_pin2,HIGH);
 }
 
+// RFID를 사용하기 위한 함수
 void RFID_start(){
   // 새 카드 접촉이 있을 때만 다음 단계로 넘어감 
   if ( ! rfid.PICC_IsNewCardPresent())
