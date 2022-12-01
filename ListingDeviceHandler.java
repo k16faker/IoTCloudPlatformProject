@@ -22,7 +22,7 @@ public class ListingDeviceHandler implements RequestHandler<Object, String> {
         // listThings 메소드 호출하여 결과 얻음. 
         ListThingsResult result = iot.listThings(listThingsRequest);
 
-        // result 객체로부터 API 응답모델 문자열 생성하여 반
+        // result 객체로부터 API 응답모델 문자열 생성하여 반환
         return getResponse(result);
     }
 
