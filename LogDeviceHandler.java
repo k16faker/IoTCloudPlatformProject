@@ -21,7 +21,7 @@ import com.amazonaws.services.lambda.runtime.RequestHandler;
 public class LogDeviceHandler implements RequestHandler<Event, String> {
 
     private DynamoDB dynamoDb;
-    private String DYNAMODB_TABLE_NAME = "Logging";
+    private String DYNAMODB_TABLE_NAME = "Logging"; // 로깅할 Dynamodb 테이블 이름을 적어줌
 
     @Override
     public String handleRequest(Event input, Context context) {
@@ -79,7 +79,7 @@ public class LogDeviceHandler implements RequestHandler<Event, String> {
 }
 
 class Event {
-    public String device;
-    public String from;
-    public String to;
+    public String device; // 조회할 디바이스 이름
+    public String from; // 시작 시간을 받을 변수 선언
+    public String to; // 끝날 시간을 받을 변수 선언
 }
