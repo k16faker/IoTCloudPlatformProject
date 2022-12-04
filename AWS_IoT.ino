@@ -21,14 +21,17 @@
 */
 
 // Co2 -> A1
-// 팬 핀 -> 7 , 6
-// 온습도센서 -> 2
-// rfid -> D9 ~ D13
+// 팬 핀 -> D7 , D8
+// 온습도센서 -> D2
+// rfid -> SDA:
+// 증가버튼 -> D4
+// 감소버튼 -> D5
 
 #include <ArduinoBearSSL.h>
 #include <ArduinoECCX08.h>
 #include <ArduinoMqttClient.h>
 #include <WiFiNINA.h> // change to #include <WiFi101.h> for MKR1000
+#include <Servo.h>
 #include "arduino_secrets.h"
 
 // 온습도 센서를 쓰기 위한 핀 설정
@@ -37,23 +40,15 @@
 #define DHTTYPE DHT11   // DHT 11
 DHT dht(DHTPIN, DHTTYPE);
 
-// RFID를 쓰기 위한 핀 설정
-#include <SPI.h> //RFID를 사용하기 위한 라이브러리
-#include <MFRC522.h> //RFID를 사용하기 위한 라이브러리
-#define SS_PIN 10
-#define RST_PIN 9 
-MFRC522 rfid(SS_PIN, RST_PIN); // Instance of the class
-MFRC522::MIFARE_Key key; 
-// Init array that will store new NUID 
-byte nuidPICC[4];
+int fan_pin1 = 7; // 팬을 작동하기 위해 7,8번 핀 사용.
+int fan_pin2 = 8;
+const char* fan_state = "OFF"; // 팬 작동을 제어하기 위해
 
-// 아두이노 호환 팬을 사용하기 위한 팬 핀 설정
-int fan_pin1 = 7;
-int fan_pin2 = 6;
-const char* fan_state = "OFF"; // 팬 작동을 제어하기 위한 변수 생성 (평상시에는 꺼져 있어야 하므로 기본값을 OFF로 선언)
-
-int RFID_count = 0; // 열람실의 현재 인원을 받기 위한 변수 생성
+int count = 0;
 #include <ArduinoJson.h>
+
+int up = 4 ; 
+int down = 5 ;
 
 /////// Enter your sensitive data in arduino_secrets.h
 const char ssid[]        = SECRET_SSID;
@@ -71,16 +66,9 @@ void setup() {
   Serial.begin(115200);
   while (!Serial);
 
-  dht.begin(); // 온습도 모듈
-  
-  // 팬 모듈
+  dht.begin();
   pinMode(fan_pin1,OUTPUT);
   pinMode(fan_pin2,OUTPUT);
-  
-  // RFID 모듈
-  SPI.begin(); // Init SPI bus
-  rfid.PCD_Init(); // Init MFRC522
-  
   if (!ECCX08.begin()) {
     Serial.println("No ECCX08 present!");
     while (1);
@@ -123,9 +111,13 @@ void loop() {
   if (millis() - lastMillis > 5000) {
     lastMillis = millis();
     char payload[512];
-    RFID_start(); // RFID로 현재 열람실 인원수를 파악
-    getDeviceStatus(payload); // 아두이노를 통해서 열람실의 현재 공기 상태를 파악
-    sendMessage(payload); // 현재 상태를 Eclipse에 전송
+    count_up();
+    count_down();
+    getDeviceStatus(payload);
+    sendMessage(payload);
+  }
+  if (CO2()>1000){
+    fan_play();
   }
 }
 
@@ -134,7 +126,6 @@ unsigned long getTime() {
   return WiFi.getTime();
 }
 
-// WiFI 연결 함수
 void connectWiFi() {
   Serial.print("Attempting to connect to SSID: ");
   Serial.print(ssid);
@@ -151,7 +142,6 @@ void connectWiFi() {
   Serial.println();
 }
 
-// MQTT 연결 함수
 void connectMQTT() {
   Serial.print("Attempting to MQTT broker: ");
   Serial.print(broker);
@@ -167,25 +157,25 @@ void connectMQTT() {
   Serial.println("You're connected to the MQTT broker");
   Serial.println();
 
-  // 사물 finalexam에 대한 주제 구독
-  mqttClient.subscribe("$aws/things/finalexam/shadow/update/delta"); 
+  // subscribe to a topic
+  mqttClient.subscribe("$aws/things/finalexam/shadow/update/delta"); // 사물을 새로 만들었으니 MyMKRWiFi1010 -> finalexam으로 수정
 }
 
 void getDeviceStatus(char* payload) {  
   // Read temperature as Celsius (the default)
-  float t = dht.readTemperature(); // 현재 열람실 온도 측정
-  float h = dht.readHumidity(); // 현재 열람실 습도 측정
-  int c = CO2() ; // 현재 열람실 co2값 측정
-  int r = RFID_count ; // RFID를 통해 현재 열람실 인원수를 입력받음
-  const char* fan = (digitalRead(fan_pin1)==LOW)? "ON" : "OFF" ; // 팬의 현재 상태 파악 (제어를 하기 위해서도 필요)
+  float t = dht.readTemperature();
+  float h = dht.readHumidity();
+  int c = CO2() ; // co2값을 반디 위한 변수
+  int p = count ; // RFID를 통해 인원수를 입력받음
+  const char* fan = (digitalRead(fan_pin1)==LOW)? "ON" : "OFF" ; // 팬이 돌아가는지 확인하기 위해
   // make payload for the device update topic ($aws/things/MyMKRWiFi1010/shadow/update)
   // 온습도 , CO2 , RFID으로부터 값을 받고
   // 팬 제어
-  sprintf(payload,"{\"state\":{\"reported\":{\"temperature\":\"%0.2f\",\"humidity\":\"%0.2f\",\"CO2\":\"%d\",\"R\":\"%d\",\"FAN\":\"%s\"}}}",t,h,c,r,fan);
+  sprintf(payload,"{\"state\":{\"reported\":{\"temperature\":\"%0.2f\",\"humidity\":\"%0.2f\",\"CO2\":\"%d\",\"R\":\"%d\",\"FAN\":\"%s\"}}}",t,h,c,p,fan);
 }
 
 void sendMessage(char* payload) {
-  char TOPIC_NAME[]= "$aws/things/finalexam/shadow/update"; // 사물 finalexam에 대한 주제
+  char TOPIC_NAME[]= "$aws/things/finalexam/shadow/update"; // 여기부분도 사물 새로 만들었음으로 바꿔야 함
   
   Serial.print("Publishing send message:");
   Serial.println(payload);
@@ -230,8 +220,9 @@ void onMessageReceived(int messageSize) {
   DynamicJsonDocument doc(1024);
   deserializeJson(doc, buffer);
   JsonObject root = doc.as<JsonObject>();
-  JsonObject state = root["state"]; // 상태 부분을 state 변수에 받음
-  const char* flag = state["FAN"]; // 열람실 상태에서 팬의 상태 부분을 변수 flag에 저장
+  // 여기 코드부터 액츄에이터 상태를 받음
+  JsonObject state = root["state"];
+  const char* flag = state["FAN"];
   // {
   //      "state": {
   //          "desired": {
@@ -244,25 +235,24 @@ void onMessageReceived(int messageSize) {
   
   char payload[512];
   Serial.println(flag);
-  if (strcmp(flag,"ON")==0) { // 팬 상태가 'ON' 이라면
-    fan_play(); // 팬을 동작시킴
-    sprintf(payload,"{\"state\":{\"reported\":{\"FAN\":\"%s\"}}}","ON"); // 팬이 현재 작동중인 상태라고 보냄
+  if (strcmp(flag,"ON")==0) {
+    fan_play();
+    sprintf(payload,"{\"state\":{\"reported\":{\"FAN\":\"%s\"}}}","ON");
     sendMessage(payload);
     
   } 
-  else if (strcmp(flag,"OFF")==0) { // 팬 상태가 'OFF'라면
-    fan_stop(); // 팬을 멈추고
-    sprintf(payload,"{\"state\":{\"reported\":{\"FAN\":\"%s\"}}}","OFF"); // 팬이 현재 정지 상태라고 보냄
+  else if (strcmp(flag,"OFF")==0) {
+    fan_stop();
+    sprintf(payload,"{\"state\":{\"reported\":{\"FAN\":\"%s\"}}}","OFF");
     sendMessage(payload);
   }
  
 }
 
-//공기 중에 이산화탄소 농도 측정하는 함수
-int CO2(){
+int CO2(){ //공기 중에 이산화탄소 농도 측정하는 함수. 디지털 핀은 안써도 됨
   int value = 0;
   for (int i=0;i<10;i++){
-    value += analogRead(A1); // co2 값 받기 위해서 A0를 사용
+    value += analogRead(A1); // co2 값 받기 위해서 A1을 사용
     delay(20);
   }
   value = value / 10 ;
@@ -279,53 +269,10 @@ void fan_stop(){ // 팬을 멈추는 함수
   digitalWrite(fan_pin2,HIGH);
 }
 
-// RFID를 사용하기 위한 함수
-void RFID_start(){
-  // 새 카드 접촉이 있을 때만 다음 단계로 넘어감 
-  if ( ! rfid.PICC_IsNewCardPresent())
-    return;
-
-  // 카드 읽힘이 제대로 되면 다음으로 넘어감
-  if ( ! rfid.PICC_ReadCardSerial())
-    return;
-  MFRC522::PICC_Type piccType = rfid.PICC_GetType(rfid.uid.sak);
-  // MIFARE 방식의 카드인지 확인
-  if (
-    piccType != MFRC522::PICC_TYPE_MIFARE_MINI &&  
-    piccType != MFRC522::PICC_TYPE_MIFARE_1K &&
-    piccType != MFRC522::PICC_TYPE_MIFARE_4K) {
-    Serial.println(F("Your tag is not of type MIFARE Classic."));
-    return;
-  }
-  else RFID_count++;
-
-  // 이전 인식된 카드와 다른 , 혹은 새카드가 인식되면
-  if (rfid.uid.uidByte[0] != nuidPICC[0] || 
-    rfid.uid.uidByte[1] != nuidPICC[1] || 
-    rfid.uid.uidByte[2] != nuidPICC[2] || 
-    rfid.uid.uidByte[3] != nuidPICC[3] ) {
-    RFID_count++ ; //인원수 추가
-
-    // 고유아이디 값을 저장
-    for (byte i = 0; i < 4; i++) {
-      nuidPICC[i] = rfid.uid.uidByte[i];
-    }
-   
-   //그 UID값을 10진값으로 출력
-    Serial.println(F("The NUID tag is:"));
-    Serial.print(F("In dec: "));
-    printDec(rfid.uid.uidByte, rfid.uid.size);
-    Serial.println();
-  }
-  //연속으로 동일한 카드를 접촉하면 다른 처리 없이 '이미 인식된 카드'라는 메세지 출력
-  else RFID_count--; // 나가는 거니까 인원수 감소
-  rfid.PICC_HaltA();
-  rfid.PCD_StopCrypto1();
+// 열람실 인원수를 받기 위해 버튼을 사용하는 함수
+void count_up(){
+  if(digitalRead(up)==HIGH) count++;
 }
-
-void printDec(byte *buffer, byte bufferSize) {
-  for (byte i = 0; i < bufferSize; i++) {
-    Serial.print(buffer[i] < 0x10 ? " 0" : " ");
-    Serial.print(buffer[i], DEC);
-  }
+void count_down(){
+  if(digitalRead(down)==HIGH) count--;
 }
